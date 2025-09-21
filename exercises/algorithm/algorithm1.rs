@@ -2,7 +2,6 @@
 	single linked list merge
 	This problem requires you to merge two ordered singly linked lists into one ordered singly linked list
 */
-// I AM NOT DONE
 
 use std::fmt::{self, Display, Formatter};
 use std::ptr::NonNull;
@@ -29,13 +28,13 @@ struct LinkedList<T> {
     end: Option<NonNull<Node<T>>>,
 }
 
-impl<T> Default for LinkedList<T> {
+impl<T: PartialOrd + Clone> Default for LinkedList<T> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<T> LinkedList<T> {
+impl<T: PartialOrd + Clone> LinkedList<T> {
     pub fn new() -> Self {
         Self {
             length: 0,
@@ -56,11 +55,11 @@ impl<T> LinkedList<T> {
         self.length += 1;
     }
 
-    pub fn get(&mut self, index: i32) -> Option<&T> {
+    pub fn get(&self, index: i32) -> Option<&T> {
         self.get_ith_node(self.start, index)
     }
 
-    fn get_ith_node(&mut self, node: Option<NonNull<Node<T>>>, index: i32) -> Option<&T> {
+    fn get_ith_node(&self, node: Option<NonNull<Node<T>>>, index: i32) -> Option<&T> {
         match node {
             None => None,
             Some(next_ptr) => match index {
@@ -71,13 +70,49 @@ impl<T> LinkedList<T> {
     }
 	pub fn merge(list_a:LinkedList<T>,list_b:LinkedList<T>) -> Self
 	{
-		//TODO
-		Self {
-            length: 0,
-            start: None,
-            end: None,
+		let mut list_c = LinkedList::<T>::new();
+        let mut node_a = list_a.start;
+        let mut node_b = list_b.start;
+        while node_a.is_some() || node_b.is_some() {
+            match (node_a, node_b) {
+                (Some(a), Some(b)) => {
+                    let a_val = unsafe { &(*a.as_ptr()).val };
+                    let b_val = unsafe { &(*b.as_ptr()).val };
+                    if a_val < b_val {
+                        list_c.add(a_val.clone());
+                        node_a = unsafe { (*a.as_ptr()).next };
+                    } else {
+                        list_c.add(b_val.clone());
+                        node_b = unsafe { (*b.as_ptr()).next };
+                    }
+                }
+                (Some(a), None) => {
+                    let a_val = unsafe { &(*a.as_ptr()).val };
+                    list_c.add(a_val.clone());
+                    node_a = unsafe { (*a.as_ptr()).next };
+                }
+                (None, Some(b)) => {
+                    let b_val = unsafe { &(*b.as_ptr()).val };
+                    list_c.add(b_val.clone());
+                    node_b = unsafe { (*b.as_ptr()).next };
+                }
+                (None, None) => {}
+            }
         }
+		list_c
 	}
+}
+impl<T> Drop for LinkedList<T> {
+    fn drop(&mut self) {
+        let mut curr = self.start;
+        while let Some(node_ptr) = curr {
+            unsafe {
+                let node = Box::from_raw(node_ptr.as_ptr());
+                curr = node.next;
+                // Box is dropped here
+            }
+        }
+    }
 }
 
 impl<T> Display for LinkedList<T>
@@ -143,7 +178,7 @@ mod tests {
 			list_b.add(vec_b[i]);
 		}
 		println!("list a {} list b {}", list_a,list_b);
-		let mut list_c = LinkedList::<i32>::merge(list_a,list_b);
+		let list_c = LinkedList::<i32>::merge(list_a,list_b);
 		println!("merged List is {}", list_c);
 		for i in 0..target_vec.len(){
 			assert_eq!(target_vec[i],*list_c.get(i as i32).unwrap());
@@ -164,7 +199,7 @@ mod tests {
 			list_b.add(vec_b[i]);
 		}
 		println!("list a {} list b {}", list_a,list_b);
-		let mut list_c = LinkedList::<i32>::merge(list_a,list_b);
+		let list_c = LinkedList::<i32>::merge(list_a,list_b);
 		println!("merged List is {}", list_c);
 		for i in 0..target_vec.len(){
 			assert_eq!(target_vec[i],*list_c.get(i as i32).unwrap());
